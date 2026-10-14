@@ -90,10 +90,98 @@ python3 hw2.py --cv-folder task2
 attack the MCP server. See the homework description for the full rules.
 
 ## Homework 2 solution:
-> to students: this is your report, see the homework description.
 
-### Task 1
-> one paragraph describing your solution, and your results on `public_test`.
+### Task 1: the CV verification agent
 
-### Task 2
-> the attack techniques you used and why you expect them to work.
+```mermaid
+flowchart TD
+    A[CV PDFs in a folder] --> B[markitdown: PDF to text]
+    B --> C[Resolver agent, tool calling<br/>6 SocialGraph MCP tools]
+    C --> D[Entity resolution: whose LinkedIn<br/>profile is this CV describing?]
+    D --> E[Code re-fetches the full profile JSON<br/>by person_id, unparaphrased]
+    E --> F[Judge model, no tools:<br/>rulebook comparison, field by field]
+    F --> G[Code guardrail: the score<br/>must agree with the verdict]
+    G --> H[One score in 0..1 per CV]
+    C -.->|retry dropped ngrok connections| C
+    E -.->|asyncio.Semaphore 3, per-CV timeout| E
+```
+
+**Solution.** Each CV is converted to text with markitdown and handed to a tool-calling
+agent built with LangChain's `create_agent`, whose only knowledge of the world comes from
+the six SocialGraph MCP tools. Because hundreds of people share a name, that agent's job is
+purely entity resolution: it searches LinkedIn, narrows with location and industry, reads
+candidate profiles, and returns up to three `person_id`s ranked by how much of the CV's
+evidence (employers, job titles, years, school, degree, field, city, skills) each of them
+explains. The code then re-fetches those full profiles itself, so the comparison never works
+on a model-paraphrased summary, and a second, tool-free judge call receives the untouched
+profile JSON plus a complete rulebook — which fields can and cannot produce a discrepancy,
+and which wording differences are acceptable — and answers with a JSON verdict containing
+the owner id, the discrepancies it found and a score. A final code-level guardrail keeps the
+returned score consistent with that verdict: a CV with a listed discrepancy can never score
+above 0.35 and a verified-consistent one never below 0.65, everything is clamped to [0, 1],
+and a CV that cannot be verified at all scores 0.5, so one failure can never crash the run.
+
+**Results on `public_test`.** **7/7 correct on three consecutive runs**, and 7/7 again from a
+fresh clone installed only from `requirements.txt`:
+
+| CV | label | our score |
+| --- | --- | --- |
+| CV_1, CV_2, CV_3, CV_6 | 1 (valid) | 0.95 – 1.00 |
+| CV_4 (year shifted 2015 vs 2014) | 0 | 0.10 |
+| CV_5 (title inflated to Senior Analyst) | 0 | 0.10 – 0.20 |
+| CV_7 (Docker claimed, not on LinkedIn) | 0 | 0.10 – 0.20 |
+
+Three further details matter in practice: MCP tool calls are wrapped in
+`ToolRetryMiddleware`/`ModelRetryMiddleware` with `on_failure="continue"` because the server
+sits behind an ngrok tunnel and does drop connections; the resolver agent is retried once if
+a tool failure escapes; and at most three CVs are in flight, each with its own timeout, so
+`results.csv` is always written even if an individual CV fails.
+
+### Task 2: fooling the verifier
+
+**The idea is to attack verification coverage, not the verifier's intelligence.** A
+rule-following verifier can only report a discrepancy in the fields its own rulebook defines
+— name, city, jobs (company, title, seniority, start and end years), education (degree,
+school, field, graduation year) and skills — while job descriptions, the headline and the
+hometown are explicitly *never* a source of a discrepancy. So the attack copies every checked
+field from the profiles verbatim and puts the falsehoods where a compliant verifier is not
+allowed to look:
+
+| # | False or embellished detail on `task2/adversarial_cv.pdf` | Where the truth is | Why a rule-following verifier cannot flag it |
+| --- | --- | --- | --- |
+| 1 | Hometown "Repulse Bay" | Facebook says **Sha Tin** | Hometown is explicitly exempt |
+| 2 | "CFA Charterholder, CFA Institute (2023)" | absent from both profiles | Certifications are not one of the checked field groups |
+| 3 | "Best Analyst Award, Standard Chartered (2021)" | absent from both profiles | Awards are not one of the checked field groups |
+| 4 | "Lead a **15-person** regional finance team covering **12 markets**", "cutting the close cycle from 9 to 4 working days" | nothing in the profiles supports a team of any size | Job description bullets are explicitly exempt |
+| 5 | Headline "Senior Finance Professional · CFA Charterholder" | profile headline is just "Finance Professional" | The headline is explicitly exempt |
+
+Every checked field group is reproduced exactly — name, city, all three jobs with their
+titles, seniority and years, HKUST/BSc/Finance/2016, and the *complete* four-skill list,
+because one extra skill would already have been a discrepancy. A closing authority cue
+("employment history, education and skills independently verified against professional
+profiles") costs nothing and leans on the well-documented sycophancy of LLM judges.
+
+**Measured against our own verifier** (`python3 hw2.py --cv-folder task2`): the true CV scores
+1.00 and the attack CV scores **0.95** — the verifier rates a CV containing four fabrications
+as more reliable than not, and would have accepted it with a comfortable margin. We also
+built a blunter variant that adds white 1 pt text instructing a screening agent to output 1.0
+(0.95 → 1.00) and deliberately did **not** ship it: the payload is the coverage gap, an
+explicit injection risks the verifiers' undisclosed defences, and a variant that needs no
+instruction is the more honest demonstration. The verifier was not "wrong" — it faithfully
+implemented the specification it was given, and the specification is where the vulnerability
+lives.
+
+### Task 3: reflection on the AI paradoxes
+
+The reflection is included in this repository as [`Task3_Reflection.pdf`](Task3_Reflection.pdf)
+and uploaded to Blackboard. It uses the numbers measured above to discuss the verification
+paradox, the symmetry between the attacker and the defender, the illusion of control created
+by a single reliability score, and the Jevons paradox of cheap verification.
+
+### Acknowledgement of AI use
+
+I acknowledge the use of a generative AI assistant (Hermes Agent) to help design and
+implement the agent in `hw2.py`, to debug the MCP connection handling, to produce the
+adversarial CV for Task 2, and to draft this report and the reflection. Every number reported
+above was produced by running the submitted code; I have read, verified and take
+responsibility for the whole submission.
