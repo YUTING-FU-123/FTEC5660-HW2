@@ -108,11 +108,11 @@ flowchart TD
 
 **Solution.** Each CV is converted to text with markitdown and handed to a tool-calling
 agent built with LangChain's `create_agent`, whose only knowledge of the world comes from
-the six SocialGraph MCP tools. Because hundreds of people share a name, that agent's job is
-purely entity resolution: it searches LinkedIn, narrows with location and industry, reads
-candidate profiles, and returns up to three `person_id`s ranked by how much of the CV's
-evidence (employers, job titles, years, school, degree, field, city, skills) each of them
-explains. The code then re-fetches those full profiles itself, so the comparison never works
+the six SocialGraph MCP tools. Because hundreds of people may share the same name, the agent is
+used solely for entity resolution: it searches LinkedIn, filters candidates by location and
+industry, inspects their profiles, and returns up to three `person_id`s ranked by how well each
+profile accounts for the evidence in the CV. The code then re-fetches those full profiles
+itself, so the comparison never works
 on a model-paraphrased summary, and a second, tool-free judge call receives the untouched
 profile JSON plus a complete rulebook — which fields can and cannot produce a discrepancy,
 and which wording differences are acceptable — and answers with a JSON verdict containing
