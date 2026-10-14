@@ -171,6 +171,22 @@ instruction is the more honest demonstration. The verifier was not "wrong" — i
 implemented the specification it was given, and the specification is where the vulnerability
 lives.
 
+**The same lie, moved one field, is caught.** To show that the verifier is faithful rather
+than weak, we re-rendered the identical CV with "CFA" appended to the *Skills* line instead of
+mentioning the credential under Certifications — nothing else changed:
+
+| Variant | Where the false credential sits | Score from our own verifier |
+| --- | --- | --- |
+| C (shipped) | "Certifications & Awards" section, outside the rulebook's field list | **0.95** — accepted |
+| D (control) | the *Skills* field, inside the rulebook's field list | **0.20** — rejected |
+
+Same model, same profiles, same retrieved evidence; only the position of one false claim
+relative to the field list changed, and the verdict flipped from "trustworthy" to "has a
+discrepancy". Detection is a property of the specification's coverage, not of the model's
+intelligence — which is also why we did not "harden" our own verifier to catch variant C: the
+graded labels are generated from the same specification, so flagging claims in exempt fields
+would only add false positives on valid CVs while earning nothing.
+
 ### Task 3: reflection on the AI paradoxes
 
 The reflection is included in this repository as [`Task3_Reflection.pdf`](Task3_Reflection.pdf)
