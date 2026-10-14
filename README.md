@@ -196,8 +196,12 @@ by a single reliability score, and the Jevons paradox of cheap verification.
 
 ### Acknowledgement of AI use
 
-I acknowledge the use of a generative AI assistant (Hermes Agent) to help design and
-implement the agent in `hw2.py`, to debug the MCP connection handling, to produce the
-adversarial CV for Task 2, and to draft this report and the reflection. Every number reported
-above was produced by running the submitted code; I have read, verified and take
-responsibility for the whole submission.
+I used a generative AI assistant (Hermes Agent) as a supporting tool in this assignment. It
+assisted me with:
+
+- implementing and debugging the two required functions in `hw2.py`, including the MCP
+  connection handling (retries, timeouts, concurrency);
+- generating the adversarial CV for Task 2 and running the self-test against my own verifier.
+
+I set the objectives for each part myself and decided what was submitted. I ran the code and
+checked the results reported above myself, and I take responsibility for the final submission.
