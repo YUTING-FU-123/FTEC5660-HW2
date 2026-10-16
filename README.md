@@ -193,10 +193,3 @@ The reflection is included in this repository as [`Task3_Reflection.pdf`](Task3_
 and uploaded to Blackboard. It uses the numbers measured above to discuss the verification
 paradox, the symmetry between the attacker and the defender, the illusion of control created
 by a single reliability score, and the Jevons paradox of cheap verification.
-
-### Acknowledgement of AI use
-
-I acknowledge the use of a generative AI assistant (Hermes Agent) to help design and implement
-the agent in `hw2.py`, to debug the MCP connection handling, and to produce the adversarial CV
-for Task 2. Every number reported above was produced by running the submitted code; I have
-read, verified and take responsibility for the whole submission.
